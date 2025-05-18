@@ -7,7 +7,6 @@
 
 #include "mywifi.h" // Include your WiFi credentials header file
 
-
 char ssid[] = WIFI_SSID;   
 char pass[] = WIFI_PASSWORD;
 #define CLK_PIN D5  // or SCK
@@ -23,7 +22,6 @@ MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, DATA_PIN, CLK_PIN, CS_PIN, MAX_DEVICES
 #define CHAR_SPACING  1 // pixels between characters
 #define BUF_SIZE  75
 char message[BUF_SIZE] = "Initializing...";
-
 
 const int UTC_offset = 9; // Japanese Standard Time
 void printText(uint8_t modStart, uint8_t modEnd, const char *pMsg)
@@ -153,14 +151,6 @@ String twoDigits(int digits)
   }
 }
 
-  // Replaced from 0x9A
- 	// 8, 0, 127, 73, 73, 73, 73, 127, 0, 	// 日
-	// 8, 0, 64, 32, 31, 21, 21, 85, 127, 	// 月 
-	// 8, 0, 64, 76, 32, 31, 40, 68, 64, 	// 火 
-	// 8, 0, 36, 20, 76, 127, 8, 20, 34, 	// 水 
-	// 8, 0, 34, 18, 10, 127, 10, 18, 34, 	// 木
-	// 8, 0, 84, 116, 86, 93, 86, 116, 84, // 金
-	// 8, 0, 64, 68, 68, 127, 68, 68, 64, 	// 土 
 char *dayOfWeek[] = {"", "(\x9A)", "(\x9B)", "(\x9C)", "(\x9D)", "(\x9E)", "(\x9F)", "(\xA0)"};
 String digitalTimeString(bool _12hours)
 {
@@ -186,11 +176,6 @@ String digitalTimeString(bool _12hours)
 }
 
 void loop() {
-    // digitalWrite(BUILTIN_LED, HIGH);
-    // delay(300);
-    // digitalWrite(BUILTIN_LED, LOW);
     delay(1000);
-//    Serial.println(digitalTimeString());
      printText(0, MAX_DEVICES-1, digitalTimeString(true).c_str());
- //   printText(0, MAX_DEVICES-1, "(\x99\x9A\x9B\x9C\x9D\x9E\x9f\xA0)" );
 }
