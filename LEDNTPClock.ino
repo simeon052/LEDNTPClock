@@ -5,8 +5,6 @@
 #include <MD_MAX72xx.h>
 #include <SPI.h>
 
-
-
 #include "mywifi.h" // Include your WiFi credentials header file
 
 
@@ -18,13 +16,14 @@ char pass[] = WIFI_PASSWORD;
 int numberOfHorizontalDisplays = 8;
 int numberOfVerticalDisplays = 1;
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
-#define MAX_DEVICES 8
+#define MAX_DEVICES 12
 MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, DATA_PIN, CLK_PIN, CS_PIN, MAX_DEVICES);
 
 // Text parameters
 #define CHAR_SPACING  1 // pixels between characters
 #define BUF_SIZE  75
-char message[BUF_SIZE] = "Hello! World";
+char message[BUF_SIZE] = "Initializing...";
+
 
 const int UTC_offset = 9; // Japanese Standard Time
 void printText(uint8_t modStart, uint8_t modEnd, const char *pMsg)
@@ -93,6 +92,8 @@ void printText(uint8_t modStart, uint8_t modEnd, const char *pMsg)
 void setup() {
 
     mx.begin();
+    mx.control(MD_MAX72XX::INTENSITY, 0);
+    printText(0, MAX_DEVICES-1, message);
 
     pinMode(BUILTIN_LED, OUTPUT);   // Pin mode for Bultin LED
 
@@ -128,8 +129,15 @@ void setup() {
     NTP.begin("ntp.nict.jp", UTC_offset, false);
     NTP.setInterval(63);
 
-  Serial.println("Wifi setup is done.");
-  Serial.println(digitalTimeString());
+  printText(0, MAX_DEVICES-1, "Wifi setup is done.");
+  delay(2000);
+  Serial.println(digitalTimeString(true));
+  Serial.println(digitalTimeString(false));
+
+  String ipAddress = "IP : " + WiFi.localIP().toString();
+
+  printText(0, MAX_DEVICES-1, ipAddress.c_str());
+  delay(2000);
 }
 
 String twoDigits(int digits)
@@ -145,24 +153,44 @@ String twoDigits(int digits)
   }
 }
 
-
-
-char *dayOfWeek[] = {"", "(Sun)", "(Mon)", "(Tue)", "(Wed)", "(Thur)", "(Fri)", "(Sat)"};
-String digitalTimeString()
+  // Replaced from 0x9A
+ 	// 8, 0, 127, 73, 73, 73, 73, 127, 0, 	// 日
+	// 8, 0, 64, 32, 31, 21, 21, 85, 127, 	// 月 
+	// 8, 0, 64, 76, 32, 31, 40, 68, 64, 	// 火 
+	// 8, 0, 36, 20, 76, 127, 8, 20, 34, 	// 水 
+	// 8, 0, 34, 18, 10, 127, 10, 18, 34, 	// 木
+	// 8, 0, 84, 116, 86, 93, 86, 116, 84, // 金
+	// 8, 0, 64, 68, 68, 127, 68, 68, 64, 	// 土 
+char *dayOfWeek[] = {"", "(\x9A)", "(\x9B)", "(\x9C)", "(\x9D)", "(\x9E)", "(\x9F)", "(\xA0)"};
+String digitalTimeString(bool _12hours)
 {
-  String timenow = twoDigits(hour()) + ":" + twoDigits(minute()) + ":" + twoDigits(second());
+  int hour_now = hour();
+  bool IsAM = true;
+  if(_12hours){
+    if(hour_now > 11){
+      hour_now = hour_now - 12;
+      IsAM = false; 
+  }
+  String timenow = twoDigits(hour_now) + ":" + twoDigits(minute()) + ":" + twoDigits(second());
   String weekdaynow = String(dayOfWeek[weekday()]);
-  String datenow = twoDigits(year()) + "/" + twoDigits(month()) + "/" + twoDigits(day());
 
-  return timenow + " " + weekdaynow  ;
+  String datenow = twoDigits(month()) + "/" + twoDigits(day());
+
+  if(_12hours == false)
+    return datenow + weekdaynow + "  " + timenow;
+
+  if(IsAM)
+    return datenow + weekdaynow + " \x98\x95" + timenow;
+  else
+    return datenow + weekdaynow + " \x98\x96" + timenow;
 }
 
 void loop() {
-    digitalWrite(BUILTIN_LED, HIGH);
-    delay(500);
-    digitalWrite(BUILTIN_LED, LOW);
-    delay(500);
-    Serial.println(digitalTimeString());
-     printText(0, MAX_DEVICES-1, digitalTimeString().c_str());
-
+    // digitalWrite(BUILTIN_LED, HIGH);
+    // delay(300);
+    // digitalWrite(BUILTIN_LED, LOW);
+    delay(1000);
+//    Serial.println(digitalTimeString());
+     printText(0, MAX_DEVICES-1, digitalTimeString(true).c_str());
+ //   printText(0, MAX_DEVICES-1, "(\x99\x9A\x9B\x9C\x9D\x9E\x9f\xA0)" );
 }
