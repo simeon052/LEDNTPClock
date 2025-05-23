@@ -86,6 +86,11 @@ void printText(uint8_t modStart, uint8_t modEnd, const char *pMsg)
   mx.control(modStart, modEnd, MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
 }
 
+#define BUTTON_PIN D3 // 例: D3ピンをボタン入力に使用
+
+int brightnessLevels[] = {0, 4, 8, 15}; // 輝度レベル例（0〜15）
+int brightnessIndex = 2;                // 初期輝度（8）
+
 void setup()
 {
 
@@ -93,7 +98,8 @@ void setup()
   mx.control(MD_MAX72XX::INTENSITY, 0);
   printText(0, MAX_DEVICES - 1, message);
 
-  pinMode(BUILTIN_LED, OUTPUT); // Pin mode for Bultin LED
+  pinMode(BUILTIN_LED, OUTPUT);      // Pin mode for Bultin LED
+  pinMode(BUTTON_PIN, INPUT_PULLUP); // ボタンはGNDに落とす
 
   Serial.begin(115200); // Set baud 115200
   Serial.setDebugOutput(true);
@@ -127,7 +133,7 @@ void setup()
 
   digitalWrite(BUILTIN_LED, HIGH);
 
-  printText(0, MAX_DEVICES - 1, "Wifi setup is done. [" + ssid + "]");
+  printText(0, MAX_DEVICES - 1, "Wifi setup is done.");
   delay(2000);
   Serial.println(digitalTimeString(true));
   Serial.println(digitalTimeString(false));
@@ -157,6 +163,9 @@ String digitalTimeString(bool _12hours)
 {
   int hour_now = hour();
   bool IsAM = true;
+  String weekdaynow = String(dayOfWeek[weekday()]);
+  String datenow = twoDigits(month()) + "/" + twoDigits(day());
+
   if (_12hours)
   {
     if (hour_now > 11)
@@ -165,21 +174,40 @@ String digitalTimeString(bool _12hours)
       IsAM = false;
     }
     String timenow = twoDigits(hour_now) + ":" + twoDigits(minute()) + ":" + twoDigits(second());
-    String weekdaynow = String(dayOfWeek[weekday()]);
-
-    String datenow = twoDigits(month()) + "/" + twoDigits(day());
-
-    if (_12hours == false)
-      return datenow + weekdaynow + "  " + timenow;
 
     if (IsAM)
       return datenow + weekdaynow + " \x98\x95" + timenow;
     else
       return datenow + weekdaynow + " \x98\x96" + timenow;
   }
-
-  void loop()
+  else
   {
-    delay(1000);
-    printText(0, MAX_DEVICES - 1, digitalTimeString(true).c_str());
+    String timenow = twoDigits(hour_now) + ":" + twoDigits(minute()) + ":" + twoDigits(second());
+    return datenow + weekdaynow + "  " + timenow;
   }
+}
+
+void loop()
+{
+  static bool prevButtonState = HIGH;
+  bool buttonState = digitalRead(BUTTON_PIN);
+
+  // ボタンが押されたとき（立ち下がり検出）
+  if (prevButtonState == HIGH && buttonState == LOW)
+  {
+    brightnessIndex = (brightnessIndex + 1) % (sizeof(brightnessLevels) / sizeof(brightnessLevels[0]));
+    mx.control(MD_MAX72XX::INTENSITY, brightnessLevels[brightnessIndex]);
+    delay(200); // チャタリング防止
+  }
+  prevButtonState = buttonState;
+
+  delay(1000);
+  printText(0, MAX_DEVICES - 1, digitalTimeString(true).c_str());
+  if (minute() == 0 && second() < 2)
+  {
+    if (hour() < 6)
+      mx.control(MD_MAX72XX::INTENSITY, 0);
+    else
+      mx.control(MD_MAX72XX::INTENSITY, brightnessLevels[brightnessIndex]);
+  }
+}
