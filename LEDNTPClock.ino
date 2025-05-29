@@ -127,7 +127,7 @@ void setup()
 
   digitalWrite(BUILTIN_LED, HIGH);
 
-  printText(0, MAX_DEVICES - 1, "Wifi setup is done. [" + ssid + "]");
+  printText(0, MAX_DEVICES - 1, "Wifi setup is done. ");
   delay(2000);
   Serial.println(digitalTimeString(true));
   Serial.println(digitalTimeString(false));
@@ -156,6 +156,10 @@ char *dayOfWeek[] = {"", "(\x9A)", "(\x9B)", "(\x9C)", "(\x9D)", "(\x9E)", "(\x9
 String digitalTimeString(bool _12hours)
 {
   int hour_now = hour();
+
+  String weekdaynow = String(dayOfWeek[weekday()]);
+  String datenow = twoDigits(month()) + "/" + twoDigits(day());
+
   bool IsAM = true;
   if (_12hours)
   {
@@ -165,21 +169,28 @@ String digitalTimeString(bool _12hours)
       IsAM = false;
     }
     String timenow = twoDigits(hour_now) + ":" + twoDigits(minute()) + ":" + twoDigits(second());
-    String weekdaynow = String(dayOfWeek[weekday()]);
-
-    String datenow = twoDigits(month()) + "/" + twoDigits(day());
-
-    if (_12hours == false)
-      return datenow + weekdaynow + "  " + timenow;
 
     if (IsAM)
-      return datenow + weekdaynow + " \x98\x95" + timenow;
+      return datenow + weekdaynow + "\x98\x95" + timenow;
     else
-      return datenow + weekdaynow + " \x98\x96" + timenow;
+      return datenow + weekdaynow + "\x98\x96" + timenow;
   }
-
-  void loop()
+  else
   {
-    delay(1000);
-    printText(0, MAX_DEVICES - 1, digitalTimeString(true).c_str());
+    String timenow = twoDigits(hour_now) + ":" + twoDigits(minute()) + ":" + twoDigits(second());
+    return datenow + weekdaynow + "  " + timenow;
   }
+}
+
+void loop()
+{
+  delay(1000);
+  printText(0, MAX_DEVICES - 1, digitalTimeString(true).c_str());
+  if (minute() == 0 && second() < 2)
+  {
+    if (hour() < 6)
+      mx.control(MD_MAX72XX::INTENSITY, 0);
+    else
+      mx.control(MD_MAX72XX::INTENSITY, 6);
+  }
+}
