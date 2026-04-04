@@ -1,7 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <time.h>
 #include <WiFiUdp.h>
-#include <NtpClientLib.h>
+#include <NTPClient.h>
 #include <MD_MAX72xx.h>
 #include <SPI.h>
 
@@ -23,7 +23,10 @@ MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, DATA_PIN, CLK_PIN, CS_PIN, MAX_DEVICES
 #define BUF_SIZE 75
 char message[BUF_SIZE] = "Initializing...";
 
-const int UTC_offset = 9; // Japanese Standard Time
+const int UTC_offset = 9; // Japanese Standard Time (hours)
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "ntp.nict.jp", UTC_offset * 3600, 63000);
+
 void printText(uint8_t modStart, uint8_t modEnd, const char *pMsg)
 // Print the text string to the LED matrix modules specified.
 // Message area is padded with blank columns after printing.
@@ -97,6 +100,7 @@ void setup()
   mx.begin();
   mx.control(MD_MAX72XX::INTENSITY, 0);
   printText(0, MAX_DEVICES - 1, message);
+  mx.control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
 
   pinMode(BUILTIN_LED, OUTPUT);      // Pin mode for Bultin LED
   pinMode(BUTTON_PIN, INPUT_PULLUP); // ボタンはGNDに落とす
@@ -128,8 +132,8 @@ void setup()
   Serial.print("Connected as ");
   Serial.println(WiFi.localIP());
 
-  NTP.begin("ntp.nict.jp", UTC_offset, false);
-  NTP.setInterval(63);
+  timeClient.begin();
+  timeClient.update();
 
   digitalWrite(BUILTIN_LED, HIGH);
 
@@ -161,10 +165,19 @@ String twoDigits(int digits)
 char *dayOfWeek[] = {"", "(\x9A)", "(\x9B)", "(\x9C)", "(\x9D)", "(\x9E)", "(\x9F)", "(\xA0)"};
 String digitalTimeString(bool _12hours)
 {
-  int hour_now = hour();
+  time_t epochTime = timeClient.getEpochTime();
+  struct tm *ptm = gmtime(&epochTime);
+
+  int hour_now = timeClient.getHours();
+  int min_now  = timeClient.getMinutes();
+  int sec_now  = timeClient.getSeconds();
+  int month_now = ptm->tm_mon + 1;
+  int day_now   = ptm->tm_mday;
+  int wday_now  = ptm->tm_wday + 1; // 1=Sunday
+
   bool IsAM = true;
-  String weekdaynow = String(dayOfWeek[weekday()]);
-  String datenow = twoDigits(month()) + "/" + twoDigits(day());
+  String weekdaynow = String(dayOfWeek[wday_now]);
+  String datenow = twoDigits(month_now) + "/" + twoDigits(day_now);
 
   if (_12hours)
   {
@@ -173,22 +186,24 @@ String digitalTimeString(bool _12hours)
       hour_now = hour_now - 12;
       IsAM = false;
     }
-    String timenow = twoDigits(hour_now) + ":" + twoDigits(minute()) + ":" + twoDigits(second());
+    String timenow = twoDigits(hour_now) + ":" + twoDigits(min_now) + ":" + twoDigits(sec_now);
 
     if (IsAM)
-      return datenow + weekdaynow + " \x98\x95" + timenow;
+      return datenow + weekdaynow + "\x95" + timenow;
     else
-      return datenow + weekdaynow + " \x98\x96" + timenow;
+      return datenow + weekdaynow + "\x96" + timenow;
   }
   else
   {
-    String timenow = twoDigits(hour_now) + ":" + twoDigits(minute()) + ":" + twoDigits(second());
-    return datenow + weekdaynow + "  " + timenow;
+    String timenow = twoDigits(hour_now) + ":" + twoDigits(min_now) + ":" + twoDigits(sec_now);
+    return datenow + weekdaynow + timenow;
   }
 }
 
 void loop()
 {
+  timeClient.update();
+
   static bool prevButtonState = HIGH;
   bool buttonState = digitalRead(BUTTON_PIN);
 
@@ -203,9 +218,9 @@ void loop()
 
   delay(1000);
   printText(0, MAX_DEVICES - 1, digitalTimeString(true).c_str());
-  if (minute() == 0 && second() < 2)
+  if (timeClient.getMinutes() == 0 && timeClient.getSeconds() < 2)
   {
-    if (hour() < 6)
+    if (timeClient.getHours() < 6)
       mx.control(MD_MAX72XX::INTENSITY, 0);
     else
       mx.control(MD_MAX72XX::INTENSITY, brightnessLevels[brightnessIndex]);
