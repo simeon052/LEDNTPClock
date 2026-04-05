@@ -6,6 +6,7 @@
 #include <SPI.h>
 
 #include "mywifi.h" // Include your WiFi credentials header file
+#include "custom_font.h"
 
 char ssid[] = WIFI_SSID;
 char pass[] = WIFI_PASSWORD;
@@ -98,6 +99,7 @@ void setup()
 {
 
   mx.begin();
+  mx.setFont(custom_font);
   mx.control(MD_MAX72XX::INTENSITY, 0);
   printText(0, MAX_DEVICES - 1, message);
   mx.control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
@@ -189,9 +191,9 @@ String digitalTimeString(bool _12hours)
     String timenow = twoDigits(hour_now) + ":" + twoDigits(min_now) + ":" + twoDigits(sec_now);
 
     if (IsAM)
-      return datenow + weekdaynow + "\x95" + timenow;
+      return datenow + " " + weekdaynow + "  \x95" + timenow;
     else
-      return datenow + weekdaynow + "\x96" + timenow;
+      return datenow + " " + weekdaynow + "  \x96" + timenow;
   }
   else
   {
